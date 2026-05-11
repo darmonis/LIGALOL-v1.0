@@ -6,7 +6,7 @@ Run with: streamlit run src/frontend/app.py
 import pandas as pd
 import streamlit as st
 
-from src.api.riot_api import fetch_player_matches
+from src.api.riot_api import fetch_last_n_matches, fetch_player_matches
 from src.challenges.engine import evaluate_daily_challenges, evaluate_weekly_challenges
 from src.config_loader import load_config, load_players
 from src.data.processor import extract_player_stats
@@ -31,13 +31,15 @@ def main() -> None:
 
     # --- Sidebar ---
     st.sidebar.header("⚙️ Configuración")
-    if st.sidebar.button("🔄 Actualizar datos desde Riot API"):
+
+    def _fetch_and_save(fetch_func, label: str) -> None:
+        """Helper to fetch matches and save stats."""
         players = load_players()
         all_stats = []
         progress_bar = st.sidebar.progress(0)
         for i, player in enumerate(players):
             st.sidebar.write(f"Consultando {player['game_name']}...")
-            matches = fetch_player_matches(player, hours=24)
+            matches = fetch_func(player)
             for match in matches:
                 stats = extract_player_stats(
                     match,
@@ -55,13 +57,19 @@ def main() -> None:
         else:
             st.sidebar.warning("No se encontraron partidas nuevas.")
 
+    if st.sidebar.button("🔄 Actualizar datos (últimas 24h)"):
+        _fetch_and_save(lambda p: fetch_player_matches(p, hours=24), "24h")
+
+    if st.sidebar.button("📥 Cargar histórico inicial (10 partidas)"):
+        _fetch_and_save(lambda p: fetch_last_n_matches(p, n=10), "histórico")
+
     # Load data
     df_all = get_all_stats()
     df_daily = get_daily_stats()
     df_weekly = get_weekly_stats()
 
     if df_all.empty:
-        st.info("No hay datos todavía. Pulsa '🔄 Actualizar datos desde Riot API' en el panel lateral para empezar.")
+        st.info("No hay datos todavía. Pulsa '📥 Cargar histórico inicial (10 partidas)' en el panel lateral para empezar.")
         st.stop()
 
     # --- Tabs ---

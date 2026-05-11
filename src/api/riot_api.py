@@ -188,3 +188,46 @@ def fetch_player_matches(
             matches.append(details)
 
     return matches
+
+
+def fetch_last_n_matches(
+    player: dict[str, str],
+    n: int = 10,
+) -> list[dict[str, Any]]:
+    """Fetch the last N match details for a player (no time limit).
+
+    Args:
+        player: Dict with keys 'game_name' and 'tag_line'.
+        n: Number of matches to retrieve.
+
+    Returns:
+        List of match detail dicts.
+    """
+    game_name = player.get("game_name")
+    tag_line = player.get("tag_line")
+
+    if not game_name or not tag_line:
+        print(f"Invalid player data: {player}")
+        return []
+
+    puuid = get_puuid(game_name, tag_line)
+    if not puuid:
+        print(f"Could not resolve PUUID for {game_name}#{tag_line}")
+        return []
+
+    match_ids = get_match_ids(
+        puuid=puuid,
+        queue_ids=list(VALID_QUEUE_IDS),
+        count=n,
+    )
+
+    matches: list[dict[str, Any]] = []
+    for match_id in match_ids:
+        details = get_match_details(match_id)
+        if details:
+            details["_query_puuid"] = puuid
+            details["_query_game_name"] = game_name
+            details["_query_tag_line"] = tag_line
+            matches.append(details)
+
+    return matches
