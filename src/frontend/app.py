@@ -548,47 +548,21 @@ def _compute_global_ranking(df_all: pd.DataFrame) -> pd.DataFrame:
     return ranks.sort_values("global_rank")
 
 
-def _render_ranking_table(df_rank: pd.DataFrame, cat_info: dict) -> str:
-    """Renderiza una tabla de ranking como HTML."""
-    key = cat_info["key"]
-    emoji = cat_info["emoji"]
-    label = cat_info["label"]
-    color = cat_info["color"]
-    fmt = cat_info["format"]
+def _render_ranking_row(rank: int, player: str, total: float, avg: float, partidas: int, color: str) -> None:
+    """Renderiza una fila de ranking usando componentes nativos de Streamlit."""
+    rank_icon = "🥇" if rank == 1 else "🥈" if rank == 2 else "🥉" if rank == 3 else f"#{rank}"
+    rank_color = "#c89b3c" if rank == 1 else "#94a3b8" if rank == 2 else "#b45309" if rank == 3 else "#64748b"
 
-    rows = ""
-    for i, row in df_rank.iterrows():
-        rank = int(row["rank"])
-        player = row["game_name"]
-        total = row["total"]
-        avg = row["avg"]
-        partidas = int(row["partidas"])
-
-        rank_icon = "🥇" if rank == 1 else "🥈" if rank == 2 else "🥉" if rank == 3 else f"#{rank}"
-        rank_color = "#c89b3c" if rank == 1 else "#94a3b8" if rank == 2 else "#b45309" if rank == 3 else "#64748b"
-
-        rows += f"""
-        <div class="rank-row">
-            <div style="font-size:1.3rem; font-weight:800; color:{rank_color}; width:3rem; text-align:center;">{rank_icon}</div>
-            <div style="flex:1;">
-                <div style="font-size:1rem; font-weight:700; color:#f8fafc;">{player}</div>
-                <div style="font-size:0.8rem; color:#94a3b8;">{partidas} partidas</div>
-            </div>
-            <div style="text-align:right;">
-                <div style="font-size:1.1rem; font-weight:700; color:{color};">{total:{fmt}}</div>
-                <div style="font-size:0.8rem; color:#94a3b8;">{avg:.1f} /partida</div>
-            </div>
-        </div>
-        """
-
-    return f"""
-    <div style="margin-bottom:1rem;">
-        <div style="font-size:1.2rem; font-weight:700; color:#f8fafc; margin-bottom:1rem; text-align:center;">
-            {emoji} {label}
-        </div>
-        {rows}
-    </div>
-    """
+    cols = st.columns([1, 3, 2])
+    with cols[0]:
+        st.markdown(f"<div style='font-size:1.5rem; text-align:center; color:{rank_color}; font-weight:800;'>{rank_icon}</div>", unsafe_allow_html=True)
+    with cols[1]:
+        st.markdown(f"<div style='font-size:1rem; font-weight:700; color:#f8fafc;'>{player}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size:0.8rem; color:#94a3b8;'>{partidas} partidas</div>", unsafe_allow_html=True)
+    with cols[2]:
+        st.markdown(f"<div style='font-size:1.1rem; font-weight:700; color:{color}; text-align:right;'>{_format_number(total)}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size:0.8rem; color:#94a3b8; text-align:right;'>{avg:.1f} /partida</div>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin:0.3rem 0; border-color:#334155; opacity:0.5;'>", unsafe_allow_html=True)
 
 
 def _compute_category_ranking(df_all: pd.DataFrame, key: str, ascending: bool) -> pd.DataFrame:
@@ -973,16 +947,18 @@ def main() -> None:
             if len(global_ranks) > 3:
                 st.markdown("#### Resto del Ranking")
                 for _, row in global_ranks.iloc[3:].iterrows():
-                    st.markdown(f"""
-                    <div class="rank-row">
-                        <div style="font-size:1.1rem; font-weight:700; color:#64748b; width:3rem; text-align:center;">#{int(row['global_rank'])}</div>
-                        <div style="flex:1;">
-                            <div style="font-size:1rem; font-weight:700; color:#f8fafc;">{row['game_name']}</div>
-                            <div style="font-size:0.8rem; color:#94a3b8;">{int(row['partidas'])} partidas — ⬆️ {row['best_category']} | ⬇️ {row['worst_category']}</div>
-                        </div>
-                        <div style="font-size:1.1rem; font-weight:700; color:#c89b3c;">{row['global_score']:.2f}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    rank = int(row["global_rank"])
+                    rank_icon = f"#{rank}"
+                    rank_color = "#64748b"
+                    cols = st.columns([1, 3, 1])
+                    with cols[0]:
+                        st.markdown(f"<div style='font-size:1.2rem; text-align:center; color:{rank_color}; font-weight:700;'>{rank_icon}</div>", unsafe_allow_html=True)
+                    with cols[1]:
+                        st.markdown(f"<div style='font-size:1rem; font-weight:700; color:#f8fafc;'>{row['game_name']}</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div style='font-size:0.8rem; color:#94a3b8;'>{int(row['partidas'])} partidas — ⬆️ {row['best_category']} | ⬇️ {row['worst_category']}</div>", unsafe_allow_html=True)
+                    with cols[2]:
+                        st.markdown(f"<div style='font-size:1.1rem; font-weight:700; color:#c89b3c; text-align:right;'>{row['global_score']:.2f}</div>", unsafe_allow_html=True)
+                    st.markdown("<hr style='margin:0.3rem 0; border-color:#334155; opacity:0.5;'>", unsafe_allow_html=True)
 
         # Tabs por categoría
         st.markdown("---")
@@ -993,6 +969,7 @@ def main() -> None:
             with cat_tab:
                 key = cat_info["key"]
                 ascending = cat_info["ascending"]
+                color = cat_info["color"]
 
                 # Nota sobre orden
                 if ascending:
@@ -1000,7 +977,15 @@ def main() -> None:
 
                 df_cat = _compute_category_ranking(df_all, key, ascending)
                 if not df_cat.empty:
-                    st.markdown(_render_ranking_table(df_cat, cat_info), unsafe_allow_html=True)
+                    for _, row in df_cat.iterrows():
+                        _render_ranking_row(
+                            rank=int(row["rank"]),
+                            player=row["game_name"],
+                            total=row["total"],
+                            avg=row["avg"],
+                            partidas=int(row["partidas"]),
+                            color=color,
+                        )
                 else:
                     st.info("No hay datos suficientes para este ranking.")
 
