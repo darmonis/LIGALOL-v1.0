@@ -338,6 +338,165 @@ def _render_weekly_bar(label: str, emoji: str, values: dict, max_val: float, col
 
 
 # ---------------------------------------------------------------------------
+# Funciones para el Duelo
+# ---------------------------------------------------------------------------
+
+ROAST_PHRASES = {
+    "kda": {
+        "win": [
+            "Lleva el KDA en modo Dios.",
+            "Está en su promo a Challenger, seguro.",
+            "Hoy no pagó internet al enemigo.",
+        ],
+        "lose": [
+            "El KDA parece un número de teléfono... y no es el suyo.",
+            "Farmeando asistencias desde la tumba.",
+            "¿Inteando o simplemente tilted? Probablemente ambos.",
+        ],
+    },
+    "damage": {
+        "win": [
+            "Máquina de destrucción certificada.",
+            "El enemigo pidió el /surrender solo por él.",
+            "DPS nivel boss final.",
+        ],
+        "lose": [
+            "Hace menos daño que un minion de cañón.",
+            "El soporte le está flameando en 3 idiomas.",
+            "¿Seguro que no era partida de TFT?",
+        ],
+    },
+    "gold": {
+        "win": [
+            "Forbes le acaba de llamar.",
+            "Monopolizando el oro como un dragón anciano.",
+            "Paga las wards con billetes de 500.",
+        ],
+        "lose": [
+            "Vive con 300 de oro desde minuto 10.",
+            "Su economía está en recesión.",
+            "Incluso el jungla enemigo tiene más oro.",
+        ],
+    },
+    "vision": {
+        "win": [
+            "Ilumina el mapa más que el Sol de Summoner's Rift.",
+            "Tiene más wards que una tienda de camping.",
+            "El enemigo no puede ni mirarle sin ser visto.",
+        ],
+        "lose": [
+            "Jugando con el mapa en negro como en Dark Souls.",
+            "¿Visión? Eso suena a magia oscura.",
+            "El jungla enemigo le visita más que su familia.",
+        ],
+    },
+    "deaths": {
+        "win": [
+            "Tan difícil de matar como una torreta de inhibidor.",
+            "El enemigo se cansó de intentarlo.",
+            "¿Inmortal? No, simplemente no se tira.",
+        ],
+        "lose": [
+            "Ha visto más grises que una partida de Ajedrez.",
+            "El enemigo le tiene de cliente frecuente.",
+            "Su KDA tiene más letras que un diccionario.",
+        ],
+    },
+    "winrate": {
+        "win": [
+            "Winrate de tryhard. Respeto.",
+            "Gana más que el casino.",
+            "El equipo enemigo le teme.",
+        ],
+        "lose": [
+            "Su winrate es un speedrun de cómo perder LP.",
+            "Incluso el equipo de desarrollo gana más.",
+            "Definiendo 'elo hell' desde la temporada 3.",
+        ],
+    },
+}
+
+
+def _pick_roast(metric: str, winner: bool) -> str:
+    import random
+    key = "win" if winner else "lose"
+    phrases = ROAST_PHRASES.get(metric, {}).get(key, [""])
+    return random.choice(phrases)
+
+
+def _render_duelo_bar(label: str, emoji: str, val_a: float, val_b: float,
+                      name_a: str, name_b: str, metric: str) -> str:
+    """Barra comparativa horizontal para el duelo entre 2 jugadores."""
+    total = val_a + val_b
+    if total == 0:
+        pct_a = pct_b = 50
+    else:
+        pct_a = (val_a / total) * 100
+        pct_b = (val_b / total) * 100
+
+    roast_a = _pick_roast(metric, val_a >= val_b)
+    roast_b = _pick_roast(metric, val_b >= val_a)
+
+    return f"""
+    <div style="margin-bottom:1.2rem; background:#1e293b; border-radius:12px; padding:1rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+            <span style="font-weight:700; color:#f8fafc; font-size:1rem;">{name_a}</span>
+            <span style="font-size:0.9rem; color:#94a3b8;">{emoji} {label}</span>
+            <span style="font-weight:700; color:#f8fafc; font-size:1rem;">{name_b}</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.4rem;">
+            <div style="flex:{pct_a:.1f}; background:linear-gradient(90deg,#3b82f6,#60a5fa); height:24px; border-radius:6px; display:flex; align-items:center; justify-content:flex-start; padding-left:0.5rem; font-size:0.85rem; color:#fff; font-weight:700; min-width:40px;">
+                {_format_number(val_a)}
+            </div>
+            <div style="flex:{pct_b:.1f}; background:linear-gradient(90deg,#ef4444,#f87171); height:24px; border-radius:6px; display:flex; align-items:center; justify-content:flex-end; padding-right:0.5rem; font-size:0.85rem; color:#fff; font-weight:700; min-width:40px;">
+                {_format_number(val_b)}
+            </div>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#94a3b8; font-style:italic;">
+            <span>{roast_a}</span>
+            <span>{roast_b}</span>
+        </div>
+    </div>
+    """
+
+
+def _duelo_veredicto(name_a: str, name_b: str, score_a: int, score_b: int) -> str:
+    diff = abs(score_a - score_b)
+    if score_a > score_b:
+        winner, loser, winner_score = name_a, name_b, score_a
+        color = "#3b82f6"
+    elif score_b > score_a:
+        winner, loser, winner_score = name_b, name_a, score_b
+        color = "#ef4444"
+    else:
+        return f"""
+        <div style="text-align:center; padding:1.5rem; background:#1e293b; border-radius:12px; margin-top:1rem;">
+            <div style="font-size:2.5rem; margin-bottom:0.5rem;">🤝</div>
+            <div style="font-size:1.3rem; font-weight:700; color:#f8fafc;">¡Empate técnico!</div>
+            <div style="font-size:0.95rem; color:#94a3b8;">Nadie gana, ambos pierden LP. Classic.</div>
+        </div>
+        """
+
+    if diff >= 5:
+        phrase = f"{winner} le ha dado una paliza de {winner_score}-{abs(score_a-score_b)}. {loser} debería considerar jugar Aram."
+        icon = "🏆"
+    elif diff >= 3:
+        phrase = f"{winner} gana con claridad. {loser} estaba cerca, pero 'cerca' solo sirve en herraduras y granadas."
+        icon = "⚡"
+    else:
+        phrase = f"Victoria ajustada para {winner}. {loser} puede pedir la revancha... o simplemente blamear al jungla."
+        icon = "🥊"
+
+    return f"""
+    <div style="text-align:center; padding:1.5rem; background:{color}22; border:2px solid {color}; border-radius:12px; margin-top:1rem;">
+        <div style="font-size:2.5rem; margin-bottom:0.5rem;">{icon}</div>
+        <div style="font-size:1.3rem; font-weight:700; color:{color};">{winner} GANA</div>
+        <div style="font-size:0.95rem; color:#94a3b8; margin-top:0.3rem;">{phrase}</div>
+    </div>
+    """
+
+
+# ---------------------------------------------------------------------------
 # App principal
 # ---------------------------------------------------------------------------
 def main() -> None:
@@ -417,8 +576,8 @@ def main() -> None:
         st.stop()
 
     # --- Tabs ---
-    tab_resumen, tab_trofeos, tab_historico = st.tabs(
-        ["📊 Resumen Diario", "🏅 Sala de Trofeos", "📈 Histórico Semanal"]
+    tab_resumen, tab_trofeos, tab_historico, tab_duelo = st.tabs(
+        ["📊 Resumen Diario", "🏅 Sala de Trofeos", "📈 Histórico Semanal", "⚔️ Duelo"]
     )
 
     # ===================================================================
@@ -686,6 +845,135 @@ def main() -> None:
                 _render_weekly_bar("Visión Total", EMOJI["vision"], vision_vals, max_vis, "#06b6d4"),
                 unsafe_allow_html=True,
             )
+
+
+    # ===================================================================
+    # TAB 4: Duelo
+    # ===================================================================
+    with tab_duelo:
+        st.markdown("### ⚔️ Duelo de Leyendas")
+        st.markdown(
+            '<div style="color:#94a3b8; margin-bottom:1rem;">Elige dos jugadores y deja que los datos hablen. Que empiece la polémica.</div>',
+            unsafe_allow_html=True,
+        )
+
+        players_list = sorted(df_all["game_name"].unique().tolist())
+        if len(players_list) < 2:
+            st.markdown(
+                '<div class="empty-msg">👤 Necesitas al menos 2 jugadores con datos para un duelo. ¡A jugar!</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            col_sel1, col_sel2 = st.columns(2)
+            with col_sel1:
+                p_a = st.selectbox("Jugador A", players_list, index=0, key="duelo_a")
+            with col_sel2:
+                default_b = 1 if len(players_list) > 1 else 0
+                p_b = st.selectbox("Jugador B", players_list, index=default_b, key="duelo_b")
+
+            if p_a == p_b:
+                st.warning("No puedes comparar a un jugador consigo mismo... a menos que quieras ver cuánto ha empeorado.")
+            else:
+                # Usar datos históricos totales para el duelo
+                df_duelo = df_all.groupby("game_name").agg(
+                    partidas=("match_id", "count"),
+                    kills=("kills", "sum"),
+                    deaths=("deaths", "sum"),
+                    assists=("assists", "sum"),
+                    kda=("kda", "mean"),
+                    total_damage=("total_damage", "sum"),
+                    gold_earned=("gold_earned", "sum"),
+                    vision_score=("vision_score", "sum"),
+                    victorias=("win", "sum"),
+                ).reset_index()
+
+                row_a = df_duelo[df_duelo["game_name"] == p_a].iloc[0]
+                row_b = df_duelo[df_duelo["game_name"] == p_b].iloc[0]
+
+                winrate_a = (row_a["victorias"] / row_a["partidas"] * 100) if row_a["partidas"] > 0 else 0
+                winrate_b = (row_b["victorias"] / row_b["partidas"] * 100) if row_b["partidas"] > 0 else 0
+
+                # Puntuación por métrica (quién gana cada una)
+                score_a = 0
+                score_b = 0
+
+                metrics = [
+                    ("KDA", EMOJI["kda"], row_a["kda"], row_b["kda"], "kda"),
+                    ("Daño Total", EMOJI["damage"], row_a["total_damage"], row_b["total_damage"], "damage"),
+                    ("Oro Total", EMOJI["gold"], row_a["gold_earned"], row_b["gold_earned"], "gold"),
+                    ("Visión Total", EMOJI["vision"], row_a["vision_score"], row_b["vision_score"], "vision"),
+                    ("Muertes (menos es mejor)", EMOJI["deaths"], -row_a["deaths"], -row_b["deaths"], "deaths"),
+                    ("Winrate", EMOJI["win"], winrate_a, winrate_b, "winrate"),
+                ]
+
+                for label, emoji, val_a, val_b, metric_key in metrics:
+                    if metric_key == "deaths":
+                        # Para muertes, invertimos la lógica visual (menos es mejor)
+                        st.markdown(
+                            _render_duelo_bar(label, emoji, row_a["deaths"], row_b["deaths"], p_a, p_b, metric_key),
+                            unsafe_allow_html=True,
+                        )
+                        if row_a["deaths"] < row_b["deaths"]:
+                            score_a += 1
+                        elif row_b["deaths"] < row_a["deaths"]:
+                            score_b += 1
+                    else:
+                        st.markdown(
+                            _render_duelo_bar(label, emoji, val_a, val_b, p_a, p_b, metric_key),
+                            unsafe_allow_html=True,
+                        )
+                        if val_a > val_b:
+                            score_a += 1
+                        elif val_b > val_a:
+                            score_b += 1
+
+                # Veredicto final
+                st.markdown(
+                    _duelo_veredicto(p_a, p_b, score_a, score_b),
+                    unsafe_allow_html=True,
+                )
+
+                # Estadísticas cruzadas graciosas
+                st.markdown("---")
+                st.markdown("#### 🔥 Estadísticas Cruzadas")
+
+                # Calcular ratios humorísticos
+                if row_a["deaths"] > 0 and row_b["deaths"] > 0:
+                    death_ratio = row_b["deaths"] / row_a["deaths"]
+                    st.markdown(
+                        f"<div style='color:#f8fafc; font-size:0.95rem; margin-bottom:0.5rem;'>"
+                        f"💀 Por cada muerte de <b>{p_a}</b>, <b>{p_b}</b> muere <b>{death_ratio:.1f}x</b> veces."
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+
+                if row_a["kills"] > 0 and row_b["kills"] > 0:
+                    kill_ratio = row_b["kills"] / row_a["kills"]
+                    st.markdown(
+                        f"<div style='color:#f8fafc; font-size:0.95rem; margin-bottom:0.5rem;'>"
+                        f"🗡️ Por cada kill de <b>{p_a}</b>, <b>{p_b}</b> consigue <b>{kill_ratio:.1f}x</b>."
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+
+                if row_a["gold_earned"] > 0:
+                    gold_per_death_a = row_a["gold_earned"] / max(row_a["deaths"], 1)
+                    gold_per_death_b = row_b["gold_earned"] / max(row_b["deaths"], 1)
+                    richer = p_a if gold_per_death_a > gold_per_death_b else p_b
+                    st.markdown(
+                        f"<div style='color:#f8fafc; font-size:0.95rem; margin-bottom:0.5rem;'>"
+                        f"💰 <b>{richer}</b> es más eficiente: genera más oro por cada vez que muere."
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+
+                # Partidas jugadas
+                st.markdown(
+                    f"<div style='color:#94a3b8; font-size:0.85rem; margin-top:0.5rem; font-style:italic;'>"
+                    f"📊 Datos basados en {row_a['partidas']} partidas de {p_a} y {row_b['partidas']} de {p_b}."
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
 
 
 if __name__ == "__main__":
