@@ -63,6 +63,17 @@ def main() -> None:
     if st.sidebar.button("📥 Cargar histórico inicial (10 partidas)"):
         _fetch_and_save(lambda p: fetch_last_n_matches(p, n=10), "histórico")
 
+    with st.sidebar.expander("🔍 Diagnóstico"):
+        if st.button("Probar API y primer jugador"):
+            from src.api.riot_api import diagnose_player
+            players = load_players()
+            if players:
+                p = players[0]
+                diag = diagnose_player(p["game_name"], p["tag_line"])
+                st.json(diag)
+            else:
+                st.warning("No hay jugadores configurados.")
+
     # Load data
     df_all = get_all_stats()
     df_daily = get_daily_stats()

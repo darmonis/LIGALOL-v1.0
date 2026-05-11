@@ -77,6 +77,41 @@ def get_puuid(game_name: str, tag_line: str) -> str | None:
     return data.get("puuid") if data else None
 
 
+def diagnose_player(game_name: str, tag_line: str) -> dict[str, Any]:
+    """Diagnose API connectivity and player resolution.
+
+    Returns a dict with raw status codes and responses for debugging.
+    """
+    config = load_config()
+    headers = {"X-Riot-Token": config["api_key"]}
+    result: dict[str, Any] = {
+        "api_key_present": bool(config.get("api_key")),
+        "api_key_prefix": (config.get("api_key", "")[:10] + "...") if config.get("api_key") else None,
+        "account_url": f"{ACCOUNT_API_URL}/accounts/by-riot-id/{game_name}/{tag_line}",
+    }
+
+    try:
+        resp = requests.get(result["account_url"], headers=headers, timeout=30)
+        result["account_status_code"] = resp.status_code
+        result["account_response"] = resp.text if not resp.ok else resp.json()
+        if resp.status_code == 200:
+            puuid = resp.json().get("puuid")
+            result["puuid_found"] = bool(puuid)
+            result["puuid_prefix"] = puuid[:20] + "..." if puuid else None
+            if puuid:
+                match_url = f"{MATCH_API_URL}/matches/by-puuid/{puuid}/ids?queue=420&queue=440&start=0&count=5"
+                resp2 = requests.get(match_url, headers=headers, timeout=30)
+                result["match_status_code"] = resp2.status_code
+                result["match_count"] = len(resp2.json()) if resp2.status_code == 200 else 0
+                result["match_response_preview"] = resp2.text[:200] if not resp2.ok else None
+        else:
+            result["puuid_found"] = False
+    except Exception as e:
+        result["exception"] = str(e)
+
+    return result
+
+
 def get_match_ids(
     puuid: str,
     start_time: int | None = None,
