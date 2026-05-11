@@ -21,7 +21,8 @@ def _ensure_csv_exists() -> None:
         df = pd.DataFrame(columns=[
             "puuid", "game_name", "tag_line", "match_id", "timestamp",
             "kills", "deaths", "assists", "kda", "total_damage",
-            "first_blood", "wards_placed", "wards_killed", "vision_score",
+            "first_blood", "first_blood_assist", "turret_kills",
+            "wards_placed", "wards_killed", "vision_score",
             "cs", "cs_per_min", "gold_earned", "game_duration", "win",
         ])
         df.to_csv(CSV_PATH, index=False)

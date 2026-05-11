@@ -65,6 +65,8 @@ def extract_player_stats(
         "kda": round(kda, 2),
         "total_damage": player_data.get("totalDamageDealtToChampions", 0),
         "first_blood": bool(player_data.get("firstBloodKill", False)),
+        "first_blood_assist": bool(player_data.get("firstBloodAssist", False)),
+        "turret_kills": player_data.get("turretKills", 0),
         "wards_placed": player_data.get("wardsPlaced", 0),
         "wards_killed": player_data.get("wardsKilled", 0),
         "vision_score": player_data.get("visionScore", 0),
